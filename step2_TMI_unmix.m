@@ -13,8 +13,7 @@
 %% ====== 路径 ======
 STEP_NAME = 'TMI_unmix';
 confname  = 'tomm_map4';
-addpath('TMI_script/TMI_script/TMISACDF');
-addpath('TMI_script/TMI_script/sparse/F');
+addpath(genpath('F'));
 
 %% ====== 参数 ======
 rsFPs     = 2;

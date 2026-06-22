@@ -8,7 +8,7 @@
 
 %% ====== 路径 ======
 STEP_NAME = 'mask';
-addpath('TMI_script/TMI_script/TMISACDF');
+addpath(genpath('F'));
 
 %% ====== 参数 ======
 rsFPs       = 2;

@@ -9,8 +9,7 @@
 %% ====== 路径 ======
 STEP_NAME = 'SACD';
 confname  = 'tomm_map4';
-addpath('TMI_script/TMI_script/TMISACDF');
-addpath('TMI_script/TMI_script/sparse/F');
+addpath(genpath('F'));
 
 %% ====== 参数 ======
 % SACD RL (TMISACD_step4)

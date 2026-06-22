@@ -8,10 +8,7 @@
 
 % clc; clear; close all;
 
-addpath('TMI_script/TMI_script/TMISACDF');
-addpath('TMI_script/TMI_script/sparse/F');
-addpath('TMI_script/TMI_script/pearson');
-addpath('TMI_script/TMI_script/config');
+addpath(genpath('F'));
 
 %% ====== 配置（从本机 tmisacd_config.m 加载，不提交）======
 % 复制 tmisacd_config_template.m → tmisacd_config.m 并填入本机路径。
