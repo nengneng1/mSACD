@@ -98,6 +98,7 @@ function [amp_raw, comp_raw] = unmixTMI_NNLS(stack1_norm, ch1_g, ch2_g, frame, b
 %   comp_raw - H×W×rsFPs  normalized proportions a_i / (a1+a2+eps)
 
 [H, W, F] = size(stack1_norm);
+stack1_norm = real(stack1_norm);
 
 % Design matrix: [ch1, ch2, baseline=1]  (frame × 3)
 c1 = ch1_g(1:frame); if isrow(c1), c1 = c1'; end
