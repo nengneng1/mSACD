@@ -100,9 +100,13 @@ for idx = idx_list
     fprintf('  预处理完成\n');
 
     % ---- 链式运行后续步骤 ----
+    % fmincon 解混 → mask → SACD
     run('step2_TMI_unmix');
     run('step2b_mask_postprocess');
     run('step3_SACD_reconstruct');
+
+    % Phasor 解混（对比，仅输出 TMI_phasor/ 目录，不进 SACD 流程）
+    run('step2_TMI_phasor');
 end
 
 fprintf('\n===== 全部完成 =====\n');
