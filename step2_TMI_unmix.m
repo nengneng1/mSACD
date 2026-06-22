@@ -1,13 +1,12 @@
 % =========================================================================
-% step2_TMI_unmix.m — PCA去噪 + TMI 通道拆分 (weighted NNLS)
+% step2_TMI_unmix.m — PCA去噪 + TMI 通道拆分 (fmincon sum-to-one)
 % =========================================================================
 % 输入 (workspace): stack1_for_TMI, imgstack, frame, paddingfactor,
 %                   FILE_OUT_DIR, fname
 % 输出 (workspace): amp_raw, comp_raw, TMIch1, TMIch2, H, W
 % 输出 (tif):       {FILE_OUT_DIR}/TMI_unmix/
 %
-% 解混模型: curve ≈ a1*ch1 + a2*ch2 + b,  a1,a2,b >= 0
-% 不再强制 c1+c2=1, 弱通道不再被亮通道吞掉
+% 解混模型: curve ≈ c1*ch1 + c2*ch2,  c1+c2=1,  0<=c1,c2<=1
 % =========================================================================
 
 %% ====== 路径 ======
@@ -58,15 +57,16 @@ stack1_norm = stack1_norm ./ max(stack1_norm(:));
 % 保存 PCA 去噪后的序列
 imwritestack(uint16(stack1_norm .* 65535), fullfile(out_dir, sprintf('%s_PCA_denoised.tif', fname)));
 
-%% ====== TMI weighted NNLS 解混 ======
+%% ====== TMI fmincon 解混 ======
 [H, W, ~] = size(stack1_norm);
-[amp_raw, comp_raw] = unmixTMI_NNLS(stack1_norm, ch1_g, ch2_g, frame, bg_thresh, rsFPs);
+comp_raw = unmixTMI_FMINCON(stack1_norm, ch1_g, ch2_g, frame, bg_thresh, rsFPs);
+amp_raw  = comp_raw;  % fmincon 输出为比例，此处 amp_raw = comp_raw 供后续步骤兼容
 
-%% ====== TMI 输出通道 (使用 amp_raw, 各自归一化) ======
-TMIch1 = amp_raw(:, :, 1);
-TMIch2 = amp_raw(:, :, 2);
-TMIch1 = TMIch1 ./ max(TMIch1(:));
-TMIch2 = TMIch2 ./ max(TMIch2(:));
+%% ====== TMI 输出通道 ======
+TMIch1 = comp_raw(:, :, 1) .* imgstack(:, :, 1);
+TMIch2 = comp_raw(:, :, 2) .* imgstack(:, :, 1);
+TMIch1 = TMIch1 ./ max(TMIch1(:) + eps);
+TMIch2 = TMIch2 ./ max(TMIch2(:) + eps);
 
 cp = 1 + paddingfactor;
 crop = @(x) x(cp:end-paddingfactor, cp:end-paddingfactor, :);
@@ -74,68 +74,40 @@ crop = @(x) x(cp:end-paddingfactor, cp:end-paddingfactor, :);
 imwritestack(uint16(crop(TMIch1) .* 65535), fullfile(out_dir, sprintf('%s_TMIch1.tif', fname)));
 imwritestack(uint16(crop(TMIch2) .* 65535), fullfile(out_dir, sprintf('%s_TMIch2.tif', fname)));
 
-fprintf('  [step2] TMI (NNLS) 拆分完成 → %s\n', out_dir);
-fprintf('    amp_raw ch1: [%.4f, %.4f]  ch2: [%.4f, %.4f]\n', ...
-    min(amp_raw(:,:,1),[],'all'), max(amp_raw(:,:,1),[],'all'), ...
-    min(amp_raw(:,:,2),[],'all'), max(amp_raw(:,:,2),[],'all'));
+fprintf('  [step2] TMI (fmincon) 拆分完成 → %s\n', out_dir);
+fprintf('    comp_raw ch1: [%.4f, %.4f]  ch2: [%.4f, %.4f]\n', ...
+    min(comp_raw(:,:,1),[],'all'), max(comp_raw(:,:,1),[],'all'), ...
+    min(comp_raw(:,:,2),[],'all'), max(comp_raw(:,:,2),[],'all'));
 
 % =========================================================================
-function [amp_raw, comp_raw] = unmixTMI_NNLS(stack1_norm, ch1_g, ch2_g, frame, bg_thresh, rsFPs)
-% Weighted NNLS unmixing:  curve(t) ≈ a1*ch1(t) + a2*ch2(t) + b
-%   a1 >= 0, a2 >= 0, b >= 0
-%
-% Weighting: w = 1/sqrt(curve+1e-4)  (Poisson-like, 避免亮帧主导 loss)
-%
-% Input:
-%   stack1_norm - H×W×F  normalized intensity stack
-%   ch1_g, ch2_g - column vectors, length=frame, reference decay curves
-%   frame       - number of time frames used
-%   bg_thresh   - background threshold (skip pixels below this)
-%   rsFPs       - number of fluorophores (2)
-%
-% Output:
-%   amp_raw  - H×W×rsFPs  absolute fitted amplitudes [a1, a2]
-%   comp_raw - H×W×rsFPs  normalized proportions a_i / (a1+a2+eps)
+function comp_raw = unmixTMI_FMINCON(stack1_norm, ch1_g, ch2_g, frame, bg_thresh, rsFPs)
+% TMI unmixing via fmincon:  curve ≈ c1*ch1 + c2*ch2
+%   Constraints: c1 + c2 = 1,  0 <= c1, c2 <= 1
 
-[H, W, F] = size(stack1_norm);
+[H, W, ~] = size(stack1_norm);
 stack1_norm = real(stack1_norm);
 
-% Design matrix: [ch1, ch2, baseline=1]  (frame × 3)
-c1 = real(ch1_g(1:frame)); if isrow(c1), c1 = c1'; end
-c2 = real(ch2_g(1:frame)); if isrow(c2), c2 = c2'; end
-R = [c1, c2, ones(frame, 1)];
+c1_ref = real(ch1_g(1:frame)); if isrow(c1_ref), c1_ref = c1_ref'; end
+c2_ref = real(ch2_g(1:frame)); if isrow(c2_ref), c2_ref = c2_ref'; end
 
-amp_raw = zeros(H, W, rsFPs);
 comp_raw = zeros(H, W, rsFPs);
+options  = optimoptions('fmincon', 'Display', 'none');
 
 parfor ii = 1:H
-    amp_row = zeros(W, rsFPs);
     comp_row = zeros(W, rsFPs);
     for jj = 1:W
         if stack1_norm(ii, jj, 1) < bg_thresh
-            amp_row(jj, :) = 0;
             comp_row(jj, :) = 0;
         else
             curve = real(squeeze(double(stack1_norm(ii, jj, :))));
             if isrow(curve), curve = curve'; end
-
-            % Poisson-like weighting
-            w = 1 ./ sqrt(curve + 1e-4);
-            Rw = R .* w;
-            yw = curve .* w;
-
-            % Non-negative least squares
-            coef = lsqnonneg(Rw, yw);
-
-            % a1, a2 (skip baseline b = coef(3))
-            amp_row(jj, :) = coef(1:rsFPs)';
-
-            % Proportions (for mask downstream)
-            s = sum(coef(1:rsFPs)) + eps;
-            comp_row(jj, :) = coef(1:rsFPs)' / s;
+            pv = fmincon( ...
+                @(c) signalseparation2fmincon(c1_ref, c2_ref, curve, c), ...
+                [0.5, 0.5], [], [], ones(1, rsFPs), 1, ...
+                zeros(1, rsFPs), ones(1, rsFPs), [], options);
+            comp_row(jj, :) = pv;
         end
     end
-    amp_raw(ii, :, :) = amp_row;
     comp_raw(ii, :, :) = comp_row;
 end
 end
