@@ -12,7 +12,6 @@
 
 %% ====== 路径 ======
 STEP_NAME = 'TMI_unmix';
-confname  = 'tomm_map4';
 addpath(genpath('F'));
 
 %% ====== 参数 ======
