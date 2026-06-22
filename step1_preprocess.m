@@ -59,6 +59,12 @@ for idx = idx_list
     end
     n_SR_frames = floor(size(data_all, 3) / skip);
     fprintf('  尺寸: %d x %d x %d, SR组数: %d\n', size(data_all, 1), size(data_all, 2), size(data_all, 3), n_SR_frames);
+
+    % --- WF（全帧均值，无 padding）---
+    wf = mean(data_all, 3);
+    wf = wf ./ max(wf(:));
+    imwrite(uint16(wf .* 65535), fullfile(FILE_OUT_DIR, 'WF.tif'));
+
     imgstack = data_all(:, :, 1:frame);
 
     % --- 填充 + 归一化 ---
