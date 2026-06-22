@@ -12,16 +12,16 @@ addpath(genpath('F'));
 
 %% ====== 参数 ======
 % SACD RL (TMISACD_step4)
-FWHM_sacd  = [3, 2.8];
-iter_sacd  = [3, 10];
+FWHM_sacd  = [3];
+iter_sacd  = [5];
 
 % SACD cumulant (TMISACD_step5)
 order      = 2;
-gamma_scan = [0.7, 1];
+gamma_scan = [ 1];
 
 % 稀疏解卷积 (TMISACD_step6)
-sp_ch1_mu = 500;  sp_ch1_sigmat = 0;  sp_ch1_l1 = 1;  sp_ch1_iter = 100;  sp_ch1_backg = 0;
-sp_ch2_mu = 500;  sp_ch2_sigmat = 0;  sp_ch2_l1 = 1;  sp_ch2_iter = 100;  sp_ch2_backg = 4;
+sp_ch1_mu = 200;  sp_ch1_sigmat = 0;  sp_ch1_l1 = 1;  sp_ch1_iter = 100;  sp_ch1_backg = 0;
+sp_ch2_mu = 200;  sp_ch2_sigmat = 0;  sp_ch2_l1 = 1;  sp_ch2_iter = 100;  sp_ch2_backg = 0;
 FWHM_post  = 2.2;
 iter_post  = 5;
 
@@ -51,14 +51,11 @@ for f = 1:n_SR_frames
     for i = 1:frame
         stack4SACD(:, :, i) = deconvlucy(imgstack_f(:, :, i), Ipsf1, iter_sacd(1));
     end
-    Ipsf2 = generate_psfv0(FWHM_sacd(2));
-    for i = 1:frame
-        stack4SACD(:, :, i) = deconvlucy(stack4SACD(:, :, i), Ipsf2, iter_sacd(2));
-    end
+
 
     % 保存 SACD RL 解卷积后的序列 (原始 TMISACD_step4 输出)
     imwritestack(uint16(percennorm(stack4SACD, 0, 100) .* 65535), ...
-        fullfile(out_dir, sprintf('%s_SR%d_raw_RL.tif', fname, f)));
+        fullfile(out_dir, sprintf('SR%d_raw_RL.tif', f)));
 
     sacd_resized = abs(fourierInterpolation(stack4SACD, [finter, finter, 1], 'lateral'));
     sacd_resized(sacd_resized < 0) = 0;
@@ -89,10 +86,10 @@ for f = 1:n_SR_frames
 
         % 保存中间序列 (mask × 数据 = 单个细胞器的时序信号)
         tag_f = sprintf('SR%d_gamma%.1f', f, ga);
-        imwritestack(uint16(maskimg1 .* 65535), fullfile(out_dir, sprintf('%s_maskimg_ch1_%s.tif', fname, tag_f)));
-        imwritestack(uint16(maskimg2 .* 65535), fullfile(out_dir, sprintf('%s_maskimg_ch2_%s.tif', fname, tag_f)));
-        imwritestack(uint16(stacksub1 .* 65535), fullfile(out_dir, sprintf('%s_fluct_ch1_%s.tif', fname, tag_f)));
-        imwritestack(uint16(stacksub2 .* 65535), fullfile(out_dir, sprintf('%s_fluct_ch2_%s.tif', fname, tag_f)));
+        imwritestack(uint16(maskimg1 .* 65535), fullfile(out_dir, sprintf('maskimg_ch1_%s.tif', tag_f)));
+        imwritestack(uint16(maskimg2 .* 65535), fullfile(out_dir, sprintf('maskimg_ch2_%s.tif', tag_f)));
+        imwritestack(uint16(stacksub1 .* 65535), fullfile(out_dir, sprintf('fluct_ch1_%s.tif', tag_f)));
+        imwritestack(uint16(stacksub2 .* 65535), fullfile(out_dir, sprintf('fluct_ch2_%s.tif', tag_f)));
 
         Nx = size(stacksub1, 1); Ny = size(stacksub1, 2);
         cum1 = zeros(Nx, Ny); cum2 = zeros(Nx, Ny);
@@ -134,10 +131,10 @@ crop = @(x) x(c1:end-paddingfactor_step3*finter, c1:end-paddingfactor_step3*fint
 for ig = 1:length(gamma_scan)
     ga = gamma_scan(ig);
     tag = sprintf('gamma%.1f', ga);
-    imwritestack(uint16(crop(accum{ig, 1}) .* 65535), fullfile(out_dir, sprintf('%s_TMISACD_ch1_%s.tif', fname, tag)));
-    imwritestack(uint16(crop(accum{ig, 2}) .* 65535), fullfile(out_dir, sprintf('%s_TMISACD_ch2_%s.tif', fname, tag)));
-    imwritestack(uint16(crop(accum{ig, 3}) .* 65535), fullfile(out_dir, sprintf('%s_SOFI_ch1_%s.tif', fname, tag)));
-    imwritestack(uint16(crop(accum{ig, 4}) .* 65535), fullfile(out_dir, sprintf('%s_SOFI_ch2_%s.tif', fname, tag)));
+    imwritestack(uint16(crop(accum{ig, 1}) .* 65535), fullfile(out_dir, sprintf('TMISACD_ch1_%s.tif', tag)));
+    imwritestack(uint16(crop(accum{ig, 2}) .* 65535), fullfile(out_dir, sprintf('TMISACD_ch2_%s.tif', tag)));
+    imwritestack(uint16(crop(accum{ig, 3}) .* 65535), fullfile(out_dir, sprintf('SOFI_ch1_%s.tif', tag)));
+    imwritestack(uint16(crop(accum{ig, 4}) .* 65535), fullfile(out_dir, sprintf('SOFI_ch2_%s.tif', tag)));
 end
 
 fprintf('  [step3] SACD重建完成 → %s\n', out_dir);

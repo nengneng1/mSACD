@@ -55,7 +55,7 @@ stack1_norm = (filt_img_PCA .* NoiseCorrection(:, :, :));
 stack1_norm = stack1_norm ./ max(stack1_norm(:));
 
 % 保存 PCA 去噪后的序列
-imwritestack(uint16(stack1_norm .* 65535), fullfile(out_dir, sprintf('%s_PCA_denoised.tif', fname)));
+imwritestack(uint16(stack1_norm .* 65535), fullfile(out_dir, 'PCA_denoised.tif'));
 
 %% ====== TMI fmincon 解混 ======
 [H, W, ~] = size(stack1_norm);
@@ -71,8 +71,8 @@ TMIch2 = TMIch2 ./ max(TMIch2(:) + eps);
 cp = 1 + paddingfactor;
 crop = @(x) x(cp:end-paddingfactor, cp:end-paddingfactor, :);
 
-imwritestack(uint16(crop(TMIch1) .* 65535), fullfile(out_dir, sprintf('%s_TMIch1.tif', fname)));
-imwritestack(uint16(crop(TMIch2) .* 65535), fullfile(out_dir, sprintf('%s_TMIch2.tif', fname)));
+imwritestack(uint16(crop(TMIch1) .* 65535), fullfile(out_dir, 'TMIch1.tif'));
+imwritestack(uint16(crop(TMIch2) .* 65535), fullfile(out_dir, 'TMIch2.tif'));
 
 fprintf('  [step2] TMI (fmincon) 拆分完成 → %s\n', out_dir);
 fprintf('    comp_raw ch1: [%.4f, %.4f]  ch2: [%.4f, %.4f]\n', ...

@@ -33,6 +33,6 @@ end
 comp_resized = imresize3(comp_img, ...
     [finter * H, finter * W, rsFPs], 'Method', 'cubic');
 
-imwritestack(uint16(comp_resized .* 65535), fullfile(out_dir, sprintf('%s_mask.tif', fname)));
+imwritestack(uint16(comp_resized .* 65535), fullfile(out_dir, 'mask.tif'));
 
 fprintf('  [step2b] mask后处理完成 → %s\n', out_dir);

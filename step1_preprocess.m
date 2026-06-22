@@ -64,7 +64,7 @@ for idx = idx_list
     % --- 填充 + 归一化 ---
     imgstack = padarray(imgstack, [paddingfactor, paddingfactor, 0], 'symmetric');
     imgstack = imgstack ./ max(imgstack(:));
-    imwritestack(uint16(imgstack .* 65535), fullfile(FILE_OUT_DIR, sprintf('%s_raw.tif', fname)));
+    imwritestack(uint16(imgstack .* 65535), fullfile(FILE_OUT_DIR, 'raw.tif'));
 
     % --- 高斯去噪 ---
     if sigma(3) ~= 0
@@ -87,7 +87,7 @@ for idx = idx_list
     end
 
     imwritestack(uint16(stack_RL ./ max(stack_RL(:)) .* 65535), ...
-        fullfile(FILE_OUT_DIR, sprintf('%s_gaussRL.tif', fname)));
+        fullfile(FILE_OUT_DIR, 'gaussRL.tif'));
 
     fprintf('  预处理完成\n');
 
