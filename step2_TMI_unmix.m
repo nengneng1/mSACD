@@ -101,8 +101,8 @@ function [amp_raw, comp_raw] = unmixTMI_NNLS(stack1_norm, ch1_g, ch2_g, frame, b
 stack1_norm = real(stack1_norm);
 
 % Design matrix: [ch1, ch2, baseline=1]  (frame × 3)
-c1 = ch1_g(1:frame); if isrow(c1), c1 = c1'; end
-c2 = ch2_g(1:frame); if isrow(c2), c2 = c2'; end
+c1 = real(ch1_g(1:frame)); if isrow(c1), c1 = c1'; end
+c2 = real(ch2_g(1:frame)); if isrow(c2), c2 = c2'; end
 R = [c1, c2, ones(frame, 1)];
 
 amp_raw = zeros(H, W, rsFPs);
@@ -116,7 +116,7 @@ parfor ii = 1:H
             amp_row(jj, :) = 0;
             comp_row(jj, :) = 0;
         else
-            curve = squeeze(double(stack1_norm(ii, jj, :)));
+            curve = real(squeeze(double(stack1_norm(ii, jj, :))));
             if isrow(curve), curve = curve'; end
 
             % Poisson-like weighting
