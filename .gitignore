@@ -1,5 +1,6 @@
 # 本机配置（含绝对路径，不提交）
 tmisacd_config.m
+tmisacd_config_*.m
 
 # 数据与结果
 result/

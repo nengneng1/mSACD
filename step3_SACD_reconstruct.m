@@ -12,7 +12,7 @@ addpath(genpath('F'));
 
 %% ====== 参数 ======
 % SACD RL (TMISACD_step4)
-FWHM_sacd  = [3];
+FWHM_sacd  = [3.1];
 iter_sacd  = [7];
 
 % SACD cumulant (TMISACD_step5)
@@ -22,8 +22,8 @@ gamma_scan = [0.5,0.7,1];
 % 稀疏解卷积 (TMISACD_step6)
 sp_ch1_mu = 500;  sp_ch1_sigmat = 0;  sp_ch1_l1 = 1;  sp_ch1_iter = 100;  sp_ch1_backg = 0;
 sp_ch2_mu = 500;  sp_ch2_sigmat = 0;  sp_ch2_l1 = 1;  sp_ch2_iter = 100;  sp_ch2_backg = 0;
-FWHM_post  = 3;
-iter_post  = 3;
+FWHM_post  = 3.3;
+iter_post  =7;
 
 %% ====== 输出目录 ======
 out_dir = fullfile(FILE_OUT_DIR, STEP_NAME);
