@@ -13,7 +13,7 @@ addpath(genpath('F'));
 %% ====== 参数 ======
 % SACD RL (TMISACD_step4)
 FWHM_sacd  = [3];
-iter_sacd  = [12];
+iter_sacd  = [7];
 
 % SACD cumulant (TMISACD_step5)
 order      = 2;
@@ -23,7 +23,7 @@ gamma_scan = [0.5,0.7,1];
 sp_ch1_mu = 500;  sp_ch1_sigmat = 0;  sp_ch1_l1 = 1;  sp_ch1_iter = 100;  sp_ch1_backg = 0;
 sp_ch2_mu = 500;  sp_ch2_sigmat = 0;  sp_ch2_l1 = 1;  sp_ch2_iter = 100;  sp_ch2_backg = 0;
 FWHM_post  = 3;
-iter_post  = 5;
+iter_post  = 3;
 
 %% ====== 输出目录 ======
 out_dir = fullfile(FILE_OUT_DIR, STEP_NAME);
@@ -76,10 +76,6 @@ for f = 1:n_SR_frames
         maskimg2 = real(comp_resized(:, :, 2) .* ch2_ .* sacd_resized.^ga).^(1/ga);
         maskimg1 = maskimg1 ./ max(maskimg1(:));
         maskimg2 = maskimg2 ./ max(maskimg2(:));
-        for z = 1:size(maskimg1, 3)
-            maskimg1(:, :, z) = maskimg1(:, :, z) ./ max(max(maskimg1(:, :, z)));
-            maskimg2(:, :, z) = maskimg2(:, :, z) ./ max(max(maskimg2(:, :, z)));
-        end
 
         stacksub1 = abs(maskimg1); stacksub1 = stacksub1(:, :, 1:20);
         stacksub2 = abs(maskimg2); stacksub2 = stacksub2(:, :, 1:20);
