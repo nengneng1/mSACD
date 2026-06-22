@@ -70,7 +70,9 @@ for idx = idx_list
     % --- 填充 + 归一化 ---
     imgstack = padarray(imgstack, [paddingfactor, paddingfactor, 0], 'symmetric');
     imgstack = imgstack ./ max(imgstack(:));
-    imwritestack(uint16(imgstack .* 65535), fullfile(FILE_OUT_DIR, 'raw.tif'));
+    cp = 1 + paddingfactor;
+    imwritestack(uint16(imgstack(cp:end-paddingfactor, cp:end-paddingfactor, :) .* 65535), ...
+        fullfile(FILE_OUT_DIR, 'raw.tif'));
 
     % --- 高斯去噪 ---
     if sigma(3) ~= 0
