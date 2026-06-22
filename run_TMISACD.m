@@ -70,8 +70,16 @@ load([confname, '.mat'], 'ch1', 'ch2');
 
 for idx = idx_list
 
-    fname     = sprintf(name_pattern, idx);
-    imgname   = [base_dir, sprintf(file_pattern, idx)];
+    fname   = sprintf(name_pattern, idx);
+    imgname = [base_dir, sprintf(file_pattern, idx)];
+
+    % ---- ROI（可选，由 roi_map 指定；无定义或为空则全图）----
+    if exist('roi_map', 'var') && idx <= numel(roi_map) && ~isempty(roi_map{idx})
+        roi   = roi_map{idx};
+        fname = [fname, sprintf('_r%d-%d_c%d-%d', roi(1), roi(2), roi(3), roi(4))];
+    else
+        roi = [];
+    end
 
     % ---- 当前文件的输出目录 ----
     imgfolder = fullfile(output_root, exp_name, fname);
@@ -82,6 +90,11 @@ for idx = idx_list
 
     %% --- 6.1 加载数据 ---
     data = double(imreadstack(imgname));
+    if ~isempty(roi)
+        data = data(roi(1):roi(2), roi(3):roi(4), :);
+        fprintf('  ROI 裁剪: 行 %d-%d, 列 %d-%d  → %dx%d\n', ...
+            roi(1), roi(2), roi(3), roi(4), roi(2)-roi(1)+1, roi(4)-roi(3)+1);
+    end
     n_total_frames = size(data, 3);
     n_SR_frames = floor(n_total_frames / skip);
     fprintf('  总帧数: %d, SR 组数: %d (skip=%d)\n', n_total_frames, n_SR_frames, skip);

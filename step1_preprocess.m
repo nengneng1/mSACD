@@ -34,6 +34,15 @@ fprintf('处理 %d 个文件\n', numel(idx_list));
 for idx = idx_list
     imgname = [base_dir, sprintf(file_pattern, idx)];
     fname   = sprintf(name_pattern, idx);
+
+    % --- ROI（可选，由 roi_map 指定；无定义或为空则全图）---
+    if exist('roi_map', 'var') && idx <= numel(roi_map) && ~isempty(roi_map{idx})
+        roi   = roi_map{idx};
+        fname = [fname, sprintf('_r%d-%d_c%d-%d', roi(1), roi(2), roi(3), roi(4))];
+    else
+        roi = [];
+    end
+
     fprintf('\n========== [%03d] %s ==========\n', idx, fname);
 
     % --- 每个文件独立的输出根目录 ---
@@ -43,6 +52,11 @@ for idx = idx_list
 
     % --- 加载 ---
     data_all = double(imreadstack(imgname));
+    if ~isempty(roi)
+        data_all = data_all(roi(1):roi(2), roi(3):roi(4), :);
+        fprintf('  ROI 裁剪: 行 %d-%d, 列 %d-%d  → %dx%d\n', ...
+            roi(1), roi(2), roi(3), roi(4), roi(2)-roi(1)+1, roi(4)-roi(3)+1);
+    end
     n_SR_frames = floor(size(data_all, 3) / skip);
     fprintf('  尺寸: %d x %d x %d, SR组数: %d\n', size(data_all, 1), size(data_all, 2), size(data_all, 3), n_SR_frames);
     imgstack = data_all(:, :, 1:frame);

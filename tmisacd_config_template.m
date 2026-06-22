@@ -37,6 +37,15 @@ name_pattern = '';   % 输出名 sprintf 格式，参数: idx，无特殊字符
 %% ====== 数据集配置 ======
 idx_list = [];       % 文件序号，如 2:2:44（偶数批量）或 [2 4 6]（指定）
 
+% ROI（按文件序号指定，不需要裁剪则留空 []）
+% 格式: [r1, r2, c1, c2]（行起止, 列起止，MATLAB 1-indexed）
+% 如何获取: FIJI 打开第1帧 → 矩形工具框选 → Image > Show Info 读取
+%   BoundingBox: x, y, width, height
+%   转换: [r1,r2,c1,c2] = [y+1, y+height, x+1, x+width]
+% 输出名会自动附加 _r{r1}-{r2}_c{c1}-{c2} 后缀以区分不同裁剪区域。
+roi_map = cell(1, max(idx_list(:)));
+% roi_map{2}  = [r1, r2, c1, c2];   % 按需填写，其余自动全图
+
 %% ====== 实验参数 ======
 exp_name = '';       % 实验名，用作输出子目录名，示例: 'MAP4_MSG_Mito'
 confname = '';       % 衰减曲线 .mat 文件名（不含扩展名），示例: 'tomm_map4'
