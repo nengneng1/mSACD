@@ -22,7 +22,7 @@ gamma_on      = 1;
 gamma_1       = 1;
 bg_thresh     = 50/65535;
 harmonics     = 1;      % 使用的谐波阶数（1=基频；可设为 [1,2] 使用多谐波投票）
-phasor_filt   = 'median3';   % phasor 空间滤波: 'none'|'median3'|'median5'|'wiener3'
+phasor_filt   = 'median5';   % phasor 空间滤波: 'none'|'median3'|'median5'|'wiener3'
 
 %% ====== 输出目录 ======
 out_dir = fullfile(FILE_OUT_DIR, STEP_NAME);
@@ -91,6 +91,10 @@ I_sum = sum(S, 2) + eps;                              % (HW)×1
 
 % 对每个谐波计算 g, s，取平均投影
 alpha_accum = zeros(H*W, 1);
+omega1 = 2*pi*harmonics(1) / frame;
+g_raw  = (S * cos(omega1*t)) ./ I_sum;   % 保留未滤波版本用于 phasor 图对比
+s_raw  = (S * sin(omega1*t)) ./ I_sum;
+
 for hi = 1:numel(harmonics)
     n = harmonics(hi);
     omega = 2*pi*n / frame;
@@ -122,6 +126,8 @@ for hi = 1:numel(harmonics)
     c1_map = ((g_px - ref2(hi,1))*dg + (s_px - ref2(hi,2))*ds) / denom;
     alpha_accum = alpha_accum + c1_map;
 end
+g_filt = g_px;   % 保留已滤波版本（harmonics(1) 对应的最后一次循环值）
+s_filt = s_px;
 c1_map = alpha_accum / numel(harmonics);   % 多谐波平均
 c1_map = max(0, min(1, c1_map));           % 截断到 [0,1]
 c2_map = 1 - c1_map;
@@ -137,25 +143,34 @@ c2_img(bg_mask) = 0;
 comp_raw = cat(3, c1_img, c2_img);
 amp_raw  = comp_raw;   % 与 fmincon 版本接口兼容
 
-%% ====== 保存 phasor 图（用于诊断）======
-% 随机采样像素，画 phasor 散点图
-n_samp = min(5000, H*W);
-idx_s  = randperm(H*W, n_samp);
-omega1 = 2*pi*harmonics(1) / frame;
-g_all  = (S * cos(omega1*t)) ./ I_sum;
-s_all  = (S * sin(omega1*t)) ./ I_sum;
+%% ====== 保存 phasor 图（滤波前 + 滤波后对比）======
+n_samp    = min(5000, H*W);
+idx_s     = randperm(H*W, n_samp);
+th        = linspace(0, pi, 200);
+phasor_ax = [-0.1 1.1 -0.1 0.7];   % [xmin xmax ymin ymax]
 
+% --- 滤波前 ---
 fig = figure('Visible','off');
-scatter(g_all(idx_s), s_all(idx_s), 1, [0.7 0.7 0.7]); hold on;
-th = linspace(0, pi, 200);
-plot(0.5+0.5*cos(th), 0.5*sin(th), 'k--', 'LineWidth', 0.8);   % universal circle
+scatter(g_raw(idx_s), s_raw(idx_s), 1, [0.7 0.7 0.7]); hold on;
+plot(0.5+0.5*cos(th), 0.5*sin(th), 'k--', 'LineWidth', 0.8);
 plot(ref1(1,1), ref1(1,2), 'ro', 'MarkerSize', 10, 'LineWidth', 2, 'DisplayName','ch1');
 plot(ref2(1,1), ref2(1,2), 'bo', 'MarkerSize', 10, 'LineWidth', 2, 'DisplayName','ch2');
-line([ref1(1,1) ref2(1,1)], [ref1(1,2) ref2(1,2)], 'Color','k','LineStyle','-');
-legend; xlabel('g'); ylabel('s');
-title(sprintf('Phasor plot  n=%d  |  %s', harmonics(1), fname), 'Interpreter','none');
-axis equal; xlim([-0.1 1.1]); ylim([-0.1 0.7]);
-saveas(fig, fullfile(out_dir, 'phasor_plot.png'));
+line([ref1(1,1) ref2(1,1)], [ref1(1,2) ref2(1,2)], 'Color','k');
+legend; xlabel('g'); ylabel('s'); axis equal; axis(phasor_ax);
+title(sprintf('Phasor raw  n=%d  |  %s', harmonics(1), fname), 'Interpreter','none');
+saveas(fig, fullfile(out_dir, 'phasor_raw.png'));
+close(fig);
+
+% --- 滤波后 ---
+fig = figure('Visible','off');
+scatter(g_filt(idx_s), s_filt(idx_s), 1, [0.7 0.7 0.7]); hold on;
+plot(0.5+0.5*cos(th), 0.5*sin(th), 'k--', 'LineWidth', 0.8);
+plot(ref1(1,1), ref1(1,2), 'ro', 'MarkerSize', 10, 'LineWidth', 2, 'DisplayName','ch1');
+plot(ref2(1,1), ref2(1,2), 'bo', 'MarkerSize', 10, 'LineWidth', 2, 'DisplayName','ch2');
+line([ref1(1,1) ref2(1,1)], [ref1(1,2) ref2(1,2)], 'Color','k');
+legend; xlabel('g'); ylabel('s'); axis equal; axis(phasor_ax);
+title(sprintf('Phasor %s  n=%d  |  %s', phasor_filt, harmonics(1), fname), 'Interpreter','none');
+saveas(fig, fullfile(out_dir, 'phasor_filt.png'));
 close(fig);
 
 %% ====== TMI 输出通道 ======
