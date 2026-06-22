@@ -18,10 +18,11 @@ STEP_NAME = 'TMI_phasor';
 addpath(genpath('F'));
 
 %% ====== 参数 ======
-gamma_on  = 1;
-gamma_1   = 1;
-bg_thresh = 50/65535;
-harmonics = 1;   % 使用的谐波阶数（1=基频；可设为 [1,2] 使用多谐波投票）
+gamma_on      = 1;
+gamma_1       = 1;
+bg_thresh     = 50/65535;
+harmonics     = 1;      % 使用的谐波阶数（1=基频；可设为 [1,2] 使用多谐波投票）
+phasor_filt   = 'median3';   % phasor 空间滤波: 'none'|'median3'|'median5'|'wiener3'
 
 %% ====== 输出目录 ======
 out_dir = fullfile(FILE_OUT_DIR, STEP_NAME);
@@ -95,6 +96,24 @@ for hi = 1:numel(harmonics)
     omega = 2*pi*n / frame;
     g_px = (S * cos(omega*t)) ./ I_sum;   % (HW)×1
     s_px = (S * sin(omega*t)) ./ I_sum;   % (HW)×1
+
+    % --- Phasor 空间滤波 ---
+    g_img = reshape(g_px, H, W);
+    s_img = reshape(s_px, H, W);
+    switch phasor_filt
+        case 'median3'
+            g_img = medfilt2(g_img, [3 3]);
+            s_img = medfilt2(s_img, [3 3]);
+        case 'median5'
+            g_img = medfilt2(g_img, [5 5]);
+            s_img = medfilt2(s_img, [5 5]);
+        case 'wiener3'
+            g_img = wiener2(g_img, [3 3]);
+            s_img = wiener2(s_img, [3 3]);
+        % case 'none': 不做任何处理
+    end
+    g_px = g_img(:);
+    s_px = s_img(:);
 
     % 投影到 ref1–ref2 连线
     dg = ref1(hi,1) - ref2(hi,1);
