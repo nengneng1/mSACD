@@ -13,7 +13,7 @@ addpath(genpath('F'));
 %% ====== 参数 ======
 rsFPs       = 2;
 mask_thresh = 0/65535;
-FWHM4gauss  = [1, 1];
+FWHM4gauss  = [0, 0];
 finter      = 2;
 
 %% ====== 输出目录 (按解混方法标签区分, 避免互相覆盖) ======

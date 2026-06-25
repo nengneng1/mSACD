@@ -105,10 +105,10 @@ for idx = idx_list
     run('step2b_mask_postprocess');
     run('step3_SACD_reconstruct');
 
-    % 方法 3: RLSU (Richardson-Lucy) 解混
-    run('step2_TMI_rlsu');
-    run('step2b_mask_postprocess');
-    run('step3_SACD_reconstruct');
+    % % 方法 3: RLSU (Richardson-Lucy) 解混
+    % run('step2_TMI_rlsu');
+    % run('step2b_mask_postprocess');
+    % run('step3_SACD_reconstruct');
 end
 
 fprintf('\n===== 全部完成 =====\n');
