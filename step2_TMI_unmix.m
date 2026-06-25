@@ -11,13 +11,13 @@
 
 %% ====== 路径 ======
 STEP_NAME = 'TMI_unmix';
+UNMIX_TAG = 'unmix';     % 方法标签 → 供 step2b/step3 区分输出目录
 addpath(genpath('F'));
 
 %% ====== 参数 ======
 rsFPs     = 2;
-gamma_on  = 1;
-gamma_1   = 1;
 bg_thresh = 50/65535;
+pca_on    = 0;          % PCA 去噪开关 (0=关闭, 用于对比)
 
 %% ====== 输出目录 ======
 out_dir = fullfile(FILE_OUT_DIR, STEP_NAME);
@@ -26,14 +26,8 @@ if ~exist(out_dir, 'dir'), mkdir(out_dir); end
 %% ====== 衰减曲线 ======
 load([confname, '.mat'], 'ch1', 'ch2');
 
-%% ====== Gamma 校正 ======
-if gamma_on == 1
-    stack1_g = stack1_for_TMI .^ gamma_1;
-    ch1_g = (ch1 .^ gamma_1) ./ max(ch1 .^ gamma_1);
-    ch2_g = (ch2 .^ gamma_1) ./ max(ch2 .^ gamma_1);
-else
-    stack1_g = stack1_for_TMI; ch1_g = ch1; ch2_g = ch2;
-end
+%% ====== 参考曲线 (无 gamma, 保持线性混合假设) ======
+stack1_g = stack1_for_TMI; ch1_g = ch1; ch2_g = ch2;
 
 % Reference curve separability check
 R_ref = [ch1_g(1:frame), ch2_g(1:frame)];
@@ -41,21 +35,23 @@ c_ref = corrcoef(R_ref);
 fprintf('  Reference: corr(ch1,ch2)=%.4f, cond([ch1,ch2])=%.2f\n', ...
     c_ref(1,2), cond(R_ref));
 
-%% ====== PCA 去噪 (TMISACD_step2) ======
+%% ====== PCA 去噪 (TMISACD_step2; pca_on=0 时跳过) ======
 stack1_norm = double(stack1_g ./ max(stack1_g(:)));
-filt_no_PC = 3;
-NoiseCorrection = sqrt(mean(stack1_norm, [1, 2]) + eps);
-temp_norm = stack1_norm ./ NoiseCorrection;
-temp_norm(temp_norm < 0) = 0;
-vector_conv = reshape(temp_norm, [size(temp_norm,1)*size(temp_norm,2), size(temp_norm,3)]);
-[flimcoeff, scores, ~] = pca(vector_conv);
-filt_vector_PCA = (scores(:, 1:filt_no_PC) * flimcoeff(:, 1:filt_no_PC)') + mean(vector_conv, 1);
-filt_img_PCA = reshape(filt_vector_PCA, [size(temp_norm,1), size(temp_norm,2), size(temp_norm,3)]);
-stack1_norm = (filt_img_PCA .* NoiseCorrection(:, :, :));
-stack1_norm = stack1_norm ./ max(stack1_norm(:));
-
-% 保存 PCA 去噪后的序列
-imwritestack(uint16(stack1_norm .* 65535), fullfile(out_dir, 'PCA_denoised.tif'));
+if pca_on == 1
+    filt_no_PC = 3;
+    NoiseCorrection = sqrt(mean(stack1_norm, [1, 2]) + eps);
+    temp_norm = stack1_norm ./ NoiseCorrection;
+    temp_norm(temp_norm < 0) = 0;
+    vector_conv = reshape(temp_norm, [size(temp_norm,1)*size(temp_norm,2), size(temp_norm,3)]);
+    [flimcoeff, scores, ~] = pca(vector_conv);
+    filt_vector_PCA = (scores(:, 1:filt_no_PC) * flimcoeff(:, 1:filt_no_PC)') + mean(vector_conv, 1);
+    filt_img_PCA = reshape(filt_vector_PCA, [size(temp_norm,1), size(temp_norm,2), size(temp_norm,3)]);
+    stack1_norm = (filt_img_PCA .* NoiseCorrection(:, :, :));
+    stack1_norm = stack1_norm ./ max(stack1_norm(:));
+    imwritestack(uint16(stack1_norm .* 65535), fullfile(out_dir, 'PCA_denoised.tif'));
+else
+    imwritestack(uint16(stack1_norm .* 65535), fullfile(out_dir, 'noPCA_input.tif'));
+end
 
 %% ====== TMI fmincon 解混 ======
 [H, W, ~] = size(stack1_norm);

@@ -22,9 +22,8 @@ tmisacd_config;
 result_root   = 'result';
 
 %% ====== 预处理参数 ======
-sigma         = [1, 1, 0];
 FWHM_TMI      = 3;
-iterTMI       = 3;
+iterTMI       = 10;
 paddingfactor = 10;
 RL1_on        = 0;
 
@@ -74,39 +73,42 @@ for idx = idx_list
     imwritestack(uint16(imgstack(cp:end-paddingfactor, cp:end-paddingfactor, :) .* 65535), ...
         fullfile(FILE_OUT_DIR, 'raw.tif'));
 
-    % --- 高斯去噪 ---
-    if sigma(3) ~= 0
-        imgstack_gauss = imgaussfilt3(imgstack, sigma);
-    else
-        imgstack_gauss = imgstack;
-    end
-
-    % --- RL 解卷积 ---
-    IpsfTMI = generate_psfv0(FWHM_TMI);
-    stack_RL = zeros(size(imgstack_gauss));
-    for i = 1:frame
-        stack_RL(:, :, i) = deconvlucy(imgstack_gauss(:, :, i), IpsfTMI, iterTMI);
-    end
-
+    % --- 解混前 RL 解卷积 (总开关 RL1_on) ---
+    %   RL1_on=1: 解混前先做 RL → 再 PCA → 再解混; 这份 RL 数据同时传给 step3 时变分离。
+    %   RL1_on=0: 不做 RL; step2 PCA / step3 时变分离都用未 RL 的数据。
+    % stack1_for_TMI 即 "PCA 之前的时序数据"，step3 直接复用它做时变分离。
     if RL1_on == 1
+        IpsfTMI = generate_psfv0(FWHM_TMI);
+        stack_RL = zeros(size(imgstack));
+        for i = 1:frame
+            stack_RL(:, :, i) = deconvlucy(imgstack(:, :, i), IpsfTMI, iterTMI);
+        end
         stack1_for_TMI = stack_RL;
+        imwritestack(uint16(stack_RL ./ max(stack_RL(:)) .* 65535), ...
+            fullfile(FILE_OUT_DIR, 'gaussRL.tif'));
     else
-        stack1_for_TMI = imgstack_gauss;
+        stack1_for_TMI = imgstack;
     end
-
-    imwritestack(uint16(stack_RL ./ max(stack_RL(:)) .* 65535), ...
-        fullfile(FILE_OUT_DIR, 'gaussRL.tif'));
 
     fprintf('  预处理完成\n');
 
-    % ---- 链式运行后续步骤 ----
-    % fmincon 解混 → mask → SACD
-    run('step2_TMI_unmix');
+    % ---- 三种解混方法各跑完整 TMISACD 流程 (用 UNMIX_TAG 区分输出目录) ----
+    % 输出: mask_unmix/SACD_unmix, mask_phasor/SACD_phasor, mask_rlsu/SACD_rlsu
+
+    % 方法 1: fmincon sum-to-one 解混
+    % run('step2_TMI_unmix');
+    % run('step2b_mask_postprocess');
+    % run('step3_SACD_reconstruct');
+
+    % 方法 2: Phasor 相量解混
+    run('step2_TMI_phasor');
     run('step2b_mask_postprocess');
     run('step3_SACD_reconstruct');
 
-    % Phasor 解混（对比，仅输出 TMI_phasor/ 目录，不进 SACD 流程）
-    run('step2_TMI_phasor');
+    % 方法 3: RLSU (Richardson-Lucy) 解混
+    run('step2_TMI_rlsu');
+    run('step2b_mask_postprocess');
+    run('step3_SACD_reconstruct');
 end
 
 fprintf('\n===== 全部完成 =====\n');

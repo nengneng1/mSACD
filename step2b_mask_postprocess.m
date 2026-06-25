@@ -16,8 +16,12 @@ mask_thresh = 0/65535;
 FWHM4gauss  = [1, 1];
 finter      = 2;
 
-%% ====== 输出目录 ======
-out_dir = fullfile(FILE_OUT_DIR, STEP_NAME);
+%% ====== 输出目录 (按解混方法标签区分, 避免互相覆盖) ======
+if ~exist('UNMIX_TAG', 'var') || isempty(UNMIX_TAG)
+    out_dir = fullfile(FILE_OUT_DIR, STEP_NAME);
+else
+    out_dir = fullfile(FILE_OUT_DIR, [STEP_NAME '_' UNMIX_TAG]);
+end
 if ~exist(out_dir, 'dir'), mkdir(out_dir); end
 
 %% ====== 掩膜后处理 (TMISACD_step3) ======
