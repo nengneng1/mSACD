@@ -24,7 +24,7 @@ addpath(genpath('F'));
 %% ====== 参数 ======
 
 % --- 第一次 RL [ch1, ch2] ---
-FWHM_sacd = [3,  3];   % PSF 半高宽 (像素)
+FWHM_sacd = [2.8,  2.8];   % PSF 半高宽 (像素)
 iter_sacd = [7, 5];   % 迭代次数
 
 % --- Dark sectioning 去背景 ---
@@ -50,8 +50,8 @@ sp_ch1_mu = 2000;  sp_ch1_sigmat = 0;  sp_ch1_l1 = 0.01;  sp_ch1_iter = 100;  sp
 sp_ch2_mu = 2000;  sp_ch2_sigmat = 0;  sp_ch2_l1 = 0.01;  sp_ch2_iter = 100;  sp_ch2_backg = 0;
 
 % --- 上采样 + 第二次 RL [ch1, ch2] ---
-finter_sr  = 3;              % Fourier 上采样倍数 (两通道共用)
-FWHM_post  = [3, 3];   % 第二次 RL PSF FWHM (原始像素单位)
+finter_sr  = 2;              % Fourier 上采样倍数 (两通道共用)
+FWHM_post  = [2.7,2.7];   % 第二次 RL PSF FWHM (原始像素单位)
 iter_post  = [5,    5 ];   % 迭代次数
 order      = [2,    2  ];   % cumulant 阶数 (deconvlucy 用 PSF^order)
 
@@ -140,8 +140,8 @@ accum_SOFI1 = [];  accum_SOFI2 = [];
     nf   = min(n_sofi_frames, frame);
     sub1 = RL1(:,:,1:nf);
     sub2 = RL2(:,:,1:nf);
-sub1 = abs(sub1-1*mean(sub1,3));
-sub2 = abs(sub2-1*mean(sub2,3));
+sub1 = abs(sub1-0.8*mean(sub1,3));
+sub2 = abs(sub2-0.8*mean(sub2,3));
     cum1 = zeros(Hf, Wf);
     cum2 = zeros(Hf, Wf);
     cum1(2:Hf-1, 2:Wf-1) = (mean(sub1(1:Hf-2, 2:Wf-1,:) .* sub1(3:Hf, 2:Wf-1,:), 3) + ...

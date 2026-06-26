@@ -27,6 +27,14 @@ pca_on    = 1;          % PCA 去噪: 1=开启, 0=关闭
 harmonics   = [1];      % 谐波阶数; [1] 基频; [1,2] 多谐波均值投影
 phasor_filt = 'cwf';    % 相量空间滤波: 'none'|'median3'|'median5'|'wiener3'|'cwf'
 
+% --- Ratio-map TV 正则 (ROF, Chambolle 对偶投影) ---
+%   只对 c1 比例图做一次 TV, c2 = 1 - c1 (sum-to-one 下两通道梯度相反, TV 等价)
+%   作用对象是"解混后的标量比例场"(分片常数+锐边界), 不破坏线性混合假设
+%   取代旧的 mask 高斯平滑: 同样压平内部噪声, 但 TV 保边界、不糊细结构
+tv_on     = 1;          % 1=对 c1 做 TV 正则, 0=关闭
+tv_weight = 0.02;       % 正则强度 λ (越大越平滑; 0.02~0.1 常用)
+tv_iter   = 100;        % Chambolle 迭代次数 (2D ROF 收敛快)
+
 %% ====== 输出目录 ======
 out_dir = fullfile(FILE_OUT_DIR, STEP_NAME);
 if ~exist(out_dir, 'dir'), mkdir(out_dir); end
@@ -164,7 +172,15 @@ s_filt = s_px;
 
 c1_map = alpha_accum / numel(harmonics);
 c1_map = max(0, min(1, c1_map));
+
+% --- Ratio-map TV 正则: 对 c2 做 TV, c1 由 1-c2 导出 (保 sum-to-one) ---
 c2_map = 1 - c1_map;
+if tv_on
+    c2_tv  = tv_denoise_rof(reshape(c2_map, H, W), tv_weight, tv_iter);
+    c2_map = max(0, min(1, c2_tv(:)));
+    c1_map = 1 - c2_map;
+    fprintf('  [Phasor] ratio-map TV: weight=%.3f, iter=%d\n', tv_weight, tv_iter);
+end
 
 %% ====== 背景掩膜 + comp_raw 组装 ======
 bg_mask = stack1_norm(:,:,1) < bg_thresh;
@@ -271,3 +287,45 @@ fprintf('  [step2_phasor] 拆分完成 → %s\n', out_dir);
 fprintf('    comp ch1: [%.4f, %.4f]  ch2: [%.4f, %.4f]\n', ...
     min(c1_img,[],'all'), max(c1_img,[],'all'), ...
     min(c2_img,[],'all'), max(c2_img,[],'all'));
+
+% =========================================================================
+% 局部函数: ROF 全变分去噪 (Chambolle 2004 对偶投影算法)
+% =========================================================================
+function u = tv_denoise_rof(f, weight, n_iter)
+% 求解 ROF 模型:   min_u  1/2 ||u - f||^2 + weight * TV(u)
+%   TV(u) = sum sqrt(ux^2 + uy^2)  (各向同性全变分)
+%   - 数据项拉住观测 f, TV 项压平内部噪声同时保锐边界
+%   - weight (=λ) 越大越平滑
+%   - Chambolle 对偶变量 p 投影迭代, tau<=1/8 保证收敛
+[M, N] = size(f);
+px = zeros(M, N);  py = zeros(M, N);
+tau = 0.125;                       % <= 1/8
+for k = 1:n_iter
+    divp     = tv_div(px, py);
+    [gx, gy] = tv_grad(divp - f / weight);
+    gn = sqrt(gx.^2 + gy.^2);
+    px = (px + tau * gx) ./ (1 + tau * gn);
+    py = (py + tau * gy) ./ (1 + tau * gn);
+end
+u = f - weight * tv_div(px, py);
+end
+
+% --- 前向差分梯度 (Neumann 边界: 边缘处差分为 0) ---
+function [gx, gy] = tv_grad(u)
+[M, N] = size(u);
+gx = zeros(M, N);  gy = zeros(M, N);
+gx(:, 1:N-1) = u(:, 2:N) - u(:, 1:N-1);   % x 方向 (列)
+gy(1:M-1, :) = u(2:M, :) - u(1:M-1, :);   % y 方向 (行)
+end
+
+% --- 散度 (前向梯度的负伴随, 满足 <grad u, p> = -<u, div p>) ---
+function d = tv_div(px, py)
+[M, N] = size(px);
+dx = px;
+dx(:, 2:N-1) = px(:, 2:N-1) - px(:, 1:N-2);
+dx(:, N)     = -px(:, N-1);
+dy = py;
+dy(2:M-1, :) = py(2:M-1, :) - py(1:M-2, :);
+dy(M, :)     = -py(M-1, :);
+d = dx + dy;
+end
