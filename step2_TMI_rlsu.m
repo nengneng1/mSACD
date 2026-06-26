@@ -24,7 +24,7 @@ addpath(genpath('F'));
 %% ====== 参数 ======
 bg_thresh  = 50/65535;
 pca_on     = 1;          % PCA 去噪开关 (0=关闭, 用于对比)
-num_iters  = 50;        % RL 迭代次数 (2 组分收敛快, 50~200 即可)
+num_iters  = 1000;        % RL 迭代次数 (2 组分收敛快, 50~200 即可)
 chunk_px   = 50000;      % 每块处理的像素数 (控制内存; 越大越快越占内存)
 
 % --- Ratio-map TV 正则 (ROF, Chambolle; 与 phasor 版一致) ---
@@ -34,7 +34,7 @@ tv_on     = 1;           % 1=对 c1 比例图做 TV 正则, 0=关闭
 tv_weight = 0.02;         % 正则强度 λ (越大越平滑; 0.02~0.1 常用)
 tv_iter   = 100;         % Chambolle 迭代次数 (2D ROF 收敛快)
 % save_iters = [1 5 20 50 100 500 1000];   % 额外保存这些迭代步的比例图, 便于观察收敛
-save_iters = [1 5 20 50 75 100];   % 额外保存这些迭代步的比例图, 便于观察收敛
+save_iters = [1 5 20 50 75 100 200 300 1000];   % 额外保存这些迭代步的比例图, 便于观察收敛
 %% ====== 输出目录 ======
 out_dir = fullfile(FILE_OUT_DIR, STEP_NAME);
 if ~exist(out_dir, 'dir'), mkdir(out_dir); end
@@ -148,7 +148,7 @@ cp   = 1 + paddingfactor;
 crop = @(x) x(cp:end-paddingfactor, cp:end-paddingfactor, :);
 
 if K > 0
-    I1       = imgstack(:,:,1);
+    I1       = stack1_for_TMI(:,:,1);
     iter_raw = reshape(iter_c1_flat, H, W, K);   % 各步 c1 占比 (未 TV)
 
     % 待写出的序列集合: 第1组=原始 RL; tv_on 时追加第2组=TV 后, 文件名加 _TV
@@ -181,8 +181,8 @@ if K > 0
 end
 
 %% ====== TMI 输出通道 ======
-TMIch1 = comp_raw(:,:,1) .* imgstack(:,:,1);
-TMIch2 = comp_raw(:,:,2) .* imgstack(:,:,1);
+TMIch1 = comp_raw(:,:,1) .* stack1_for_TMI(:,:,1);
+TMIch2 = comp_raw(:,:,2) .* stack1_for_TMI(:,:,1);
 TMIch1 = TMIch1 ./ max(TMIch1(:) + eps);
 TMIch2 = TMIch2 ./ max(TMIch2(:) + eps);
 

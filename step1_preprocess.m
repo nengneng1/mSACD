@@ -22,10 +22,10 @@ tmisacd_config;
 result_root   = 'result';
 
 %% ====== 预处理参数 ======
-FWHM_TMI      = 3;
-iterTMI       = 10;
+FWHM_TMI      = 3.1;
+iterTMI       = 5;
 paddingfactor = 10;
-RL1_on        = 0;
+RL1_on        = 1;
 
 fprintf('处理 %d 个文件\n', numel(idx_list));
 
@@ -98,12 +98,12 @@ for idx = idx_list
     % 方法 1: fmincon sum-to-one 解混
     % run('step2_TMI_unmix');
     % run('step2b_mask_postprocess');
-    % run('step3_SACD_reconstruct');
+    % % run('step3_SACD_reconstruct');
 
     % 方法 2: Phasor 相量解混
     % run('step2_TMI_phasor');
     % run('step2b_mask_postprocess');
-    % run('step3_SACD_reconstruct');
+    % % run('step3_SACD_reconstruct');
 
     % 方法 3: RLSU (Richardson-Lucy) 解混
     run('step2_TMI_rlsu');

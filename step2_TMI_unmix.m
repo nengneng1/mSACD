@@ -59,8 +59,8 @@ comp_raw = unmixTMI_FMINCON(stack1_norm, ch1_g, ch2_g, frame, bg_thresh, rsFPs);
 amp_raw  = comp_raw;  % fmincon 输出为比例，此处 amp_raw = comp_raw 供后续步骤兼容
 
 %% ====== TMI 输出通道 ======
-TMIch1 = comp_raw(:, :, 1) .* imgstack(:, :, 1);
-TMIch2 = comp_raw(:, :, 2) .* imgstack(:, :, 1);
+TMIch1 = comp_raw(:, :, 1) .* stack1_for_TMI(:, :, 1);
+TMIch2 = comp_raw(:, :, 2) .* stack1_for_TMI(:, :, 1);
 TMIch1 = TMIch1 ./ max(TMIch1(:) + eps);
 TMIch2 = TMIch2 ./ max(TMIch2(:) + eps);
 

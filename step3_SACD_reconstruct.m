@@ -24,8 +24,8 @@ addpath(genpath('F'));
 %% ====== 参数 ======
 
 % --- 第一次 RL [ch1, ch2] ---
-FWHM_sacd = [2.8,  2.8];   % PSF 半高宽 (像素)
-iter_sacd = [7, 5];   % 迭代次数
+FWHM_sacd = [2.9,  2.9];   % PSF 半高宽 (像素)
+iter_sacd = [1, 1];   % 迭代次数
 
 % --- Dark sectioning 去背景 ---
 % 光学参数 (两通道共用同一光学系统)
@@ -46,8 +46,8 @@ ds_dark3d     = [false, false]; % true=时序均值估背景, false=逐帧独立
 n_sofi_frames = 20;     % 用于累积量计算的帧数
 
 % --- sparse_main ---
-sp_ch1_mu = 2000;  sp_ch1_sigmat = 0;  sp_ch1_l1 = 0.01;  sp_ch1_iter = 100;  sp_ch1_backg = 0;
-sp_ch2_mu = 2000;  sp_ch2_sigmat = 0;  sp_ch2_l1 = 0.01;  sp_ch2_iter = 100;  sp_ch2_backg = 0;
+sp_ch1_mu = 200;  sp_ch1_sigmat = 0;  sp_ch1_l1 = 5;  sp_ch1_iter = 100;  sp_ch1_backg = 0;
+sp_ch2_mu = 200;  sp_ch2_sigmat = 0;  sp_ch2_l1 = 5;  sp_ch2_iter = 100;  sp_ch2_backg = 0;
 
 % --- 上采样 + 第二次 RL [ch1, ch2] ---
 finter_sr  = 2;              % Fourier 上采样倍数 (两通道共用)
@@ -62,6 +62,13 @@ else
     out_dir = fullfile(FILE_OUT_DIR, [STEP_NAME '_' UNMIX_TAG]);
 end
 if ~exist(out_dir, 'dir'), mkdir(out_dir); end
+
+% --- 迭代数标注 (仅 RLSU: 在 SACD 结果文件名上标注 RL 解混经历的迭代次数) ---
+if exist('UNMIX_TAG', 'var') && strcmp(UNMIX_TAG, 'rlsu') && exist('num_iters', 'var')
+    iter_tag = sprintf('_iter%d', num_iters);
+else
+    iter_tag = '';
+end
 
 %% ====== 衰减曲线 ======
 load([confname, '.mat'], 'ch1', 'ch2');
@@ -79,6 +86,7 @@ ds_params.factor       = ds_factor;
 accum_SACD1 = [];  accum_SACD2 = [];
 accum_SOFI1 = [];  accum_SOFI2 = [];
 
+f = 1;   % 单 SR 帧组 (for 循环已注释; 只处理前 frame 帧)
 % for f = 1:n_SR_frames
     fprintf('  SR 帧 %d/%d\n', f, n_SR_frames);
 
@@ -194,9 +202,13 @@ sp2 = cum2;
 c1   = paddingfactor * finter_sr + 1;
 crop = @(x) x(c1:end-paddingfactor*finter_sr, c1:end-paddingfactor*finter_sr, :);
 
-imwritestack(uint16(crop(accum_SACD1) .* 65535), fullfile(out_dir, 'TMISACD_ch1.tif'));
-imwritestack(uint16(crop(accum_SACD2) .* 65535), fullfile(out_dir, 'TMISACD_ch2.tif'));
-imwritestack(uint16(crop(accum_SOFI1) .* 65535), fullfile(out_dir, 'SOFI_ch1.tif'));
-imwritestack(uint16(crop(accum_SOFI2) .* 65535), fullfile(out_dir, 'SOFI_ch2.tif'));
+imwritestack(uint16(crop(accum_SACD1) .* 65535), fullfile(out_dir, ['TMISACD_ch1' iter_tag '.tif']));
+imwritestack(uint16(crop(accum_SACD2) .* 65535), fullfile(out_dir, ['TMISACD_ch2' iter_tag '.tif']));
+imwritestack(uint16(crop(accum_SOFI1) .* 65535), fullfile(out_dir, ['SOFI_ch1' iter_tag '.tif']));
+imwritestack(uint16(crop(accum_SOFI2) .* 65535), fullfile(out_dir, ['SOFI_ch2' iter_tag '.tif']));
 
-fprintf('  [step3] SACD重建完成 → %s\n', out_dir);
+if isempty(iter_tag)
+    fprintf('  [step3] SACD重建完成 → %s\n', out_dir);
+else
+    fprintf('  [step3] SACD重建完成 (RLSU %d 次迭代) → %s\n', num_iters, out_dir);
+end
